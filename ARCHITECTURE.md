@@ -43,7 +43,7 @@ All three are single-file static applications. There is no build step and no ser
 
 ## Deployment
 
-The Pages workflow uploads this repository as a static artifact and deploys it. Each app uses relative placement under its folder, so the same source works under the `/evelyn-apps/<app>/` paths.
+The Pages workflow uploads this repository as a static artifact and deploys it. Each app uses relative placement under its folder, so the same source works under the `/personalapps/<app>/` paths.
 
 ## Recommended next improvements
 
