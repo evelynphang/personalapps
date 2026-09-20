@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Evelyn &amp; Damian — Travel Map</title>
+
+<!-- Leaflet (real interactive map) -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+
+<!-- Supabase (cloud sync + storage) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+  :root{
+    --bg:#0f1724; --panel:#151f31; --panel2:#1c2942; --line:#26344f;
+    --text:#e7edf7; --muted:#93a2c0; --accent:#5b9dff;
+    --visited:#22c55e; --bucket:#f59e0b;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;background:var(--bg);color:var(--text)}
+  #app{display:flex;height:100vh;overflow:hidden}
+  #sidebar{width:430px;max-width:47vw;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;position:relative}
+  #cardNav{position:absolute;bottom:16px;left:50%;transform:translateX(-50%);display:flex;gap:8px;z-index:6;background:rgba(21,31,49,.9);backdrop-filter:blur(4px);padding:6px;border:1px solid var(--line);border-radius:12px;box-shadow:0 4px 14px rgba(0,0,0,.4)}
+  #cardNav button{min-width:74px}
+  body.editing #cardNav{display:none !important}
+  header{padding:16px 18px;border-bottom:1px solid var(--line)}
+  header h1{margin:0;font-size:18px;letter-spacing:.2px}
+  header p{margin:4px 0 0;font-size:12px;color:var(--muted)}
+  .toolbar{display:flex;gap:7px;padding:12px 14px;border-bottom:1px solid var(--line);flex-wrap:nowrap;align-items:center;overflow-x:auto}
+  .toolbar .grow{flex:1}
+  .tb-sep{width:1px;height:22px;background:var(--line);flex:0 0 auto;margin:0 2px}
+  button,select,input,textarea{font-family:inherit}
+  .btn{background:var(--accent);color:#06122a;border:none;padding:9px 13px;border-radius:9px;font-weight:600;cursor:pointer;font-size:13px}
+  .btn:hover{filter:brightness(1.07)}
+  .btn.secondary{background:var(--panel2);color:var(--text);border:1px solid var(--line)}
+  .btn.ghost{background:transparent;color:var(--muted);border:1px solid var(--line)}
+  .btn.sm{padding:6px 10px;font-size:12px;border-radius:7px}
+  .chip{flex:0 0 auto;white-space:nowrap;text-align:center;padding:7px 11px;border-radius:8px;background:var(--panel2);border:1px solid var(--line);color:var(--muted);cursor:pointer;font-size:12px;font-weight:600}
+  .chip.active{color:var(--text);border-color:var(--accent)}
+  /* View tabs (Map / List) */
+  #viewTabs{position:fixed;top:10px;left:50%;transform:translateX(-50%);z-index:1300;display:flex;gap:4px;background:rgba(21,31,49,.92);backdrop-filter:blur(4px);padding:4px;border:1px solid var(--line);border-radius:11px;box-shadow:0 4px 14px rgba(0,0,0,.4)}
+  #viewTabs button{background:transparent;border:none;color:var(--muted);padding:6px 14px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer}
+  #viewTabs button.active{background:var(--accent);color:#06122a}
+  body.editing #viewTabs{display:none}
+  /* List view */
+  #listView{display:none;position:fixed;inset:0;background:var(--bg);overflow-y:auto;z-index:800}
+  body.listmode #app{display:none}
+  body.listmode #listView{display:block}
+  .lv-inner{max-width:820px;margin:0 auto;padding:60px 20px 40px}
+  .lv-header-row{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:4px}
+  .lv-inner h2{margin:0 0 2px;font-size:20px}
+  .lv-count{color:var(--muted);font-size:14px;font-weight:500}
+  .lv-hint{color:var(--muted);font-size:12px;margin:0 0 16px}
+  #venueTable{width:100%;border-collapse:collapse;font-size:14px}
+  #venueTable th{text-align:left;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.5px;padding:8px 10px;border-bottom:1px solid var(--line);cursor:pointer;user-select:none}
+  #venueTable th:hover{color:var(--text)}
+  #venueTable th.sort-active{color:var(--accent)}
+  #venueTable th::after{content:'';display:inline-block;margin-left:4px;font-size:10px}
+  #venueTable th.sort-asc::after{content:'▲'}
+  #venueTable th.sort-desc::after{content:'▼'}
+  #venueTable td{padding:12px 10px;border-bottom:1px solid var(--line)}
+  #venueTable tbody tr{cursor:pointer}
+  #venueTable tbody tr:hover{background:var(--panel2)}
+  #venueTable .tnum{width:34px;color:var(--muted)}
+  #venueTable .tcity{font-weight:700}
+  .tstatus{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;text-transform:uppercase;letter-spacing:.4px;white-space:nowrap}
+  .tstatus.visited{background:rgba(34,197,94,.16);color:var(--visited)}
+  .tstatus.bucketlist{background:rgba(245,158,11,.16);color:var(--bucket)}
+  #list{overflow-y:auto;padding:12px 14px 40px;flex:1;scroll-snap-type:y mandatory}
+  .empty{color:var(--muted);text-align:center;padding:40px 10px;font-size:13px;line-height:1.6}
+  .card{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px;position:relative;scroll-snap-align:start;scroll-snap-stop:always;min-height:var(--cardH,auto)}
+  .card .num{position:absolute;top:-9px;left:-9px;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:#06122a;z-index:2}
+  .card.visited .num{background:var(--visited)}
+  .card.bucketlist .num{background:var(--bucket)}
+  .card .photo{width:100%;height:210px;object-fit:cover;border-radius:9px;margin-bottom:10px;display:block;background:var(--bg)}
+  .card .place{font-size:15px;font-weight:700;margin:0 0 2px}
+  .card .country{font-size:12px;color:var(--muted)}
+  .card .meta{display:flex;justify-content:space-between;align-items:center;margin:9px 0 8px;gap:8px}
+  .card .when{font-size:12px;color:var(--muted)}
+  .status-pill{font-size:11px;font-weight:700;padding:3px 9px;border-radius:20px;text-transform:uppercase;letter-spacing:.4px}
+  .status-pill.visited{background:rgba(34,197,94,.16);color:var(--visited)}
+  .status-pill.bucketlist{background:rgba(245,158,11,.16);color:var(--bucket)}
+  .comment-block label{display:block;font-size:11px;color:var(--muted);margin:6px 0 3px;font-weight:600}
+  textarea,input,select{width:100%;background:var(--bg);border:1px solid var(--line);color:var(--text);border-radius:8px;padding:8px 9px;font-size:13px}
+  textarea{resize:vertical;min-height:46px}
+  .card .actions{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;align-items:center}
+  .saved-flash{color:var(--visited);font-size:11px;margin-left:6px;opacity:0;transition:opacity .2s}
+  .saved-flash.show{opacity:1}
+  #map{flex:1;height:100%}
+  /* Editing mode: hide the map, give the form the whole screen */
+  body.editing #map{display:none}
+  body.editing #sidebar{width:100%;max-width:100%}
+  body.editing .modal{width:720px}
+  .pin{border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:#06122a;border:2px solid #fff;box-shadow:0 1px 6px rgba(0,0,0,.5)}
+  .pin.visited{background:var(--visited)}
+  .pin.bucketlist{background:var(--bucket)}
+  .leaflet-popup-content{margin:10px 12px;font-size:13px}
+  .leaflet-popup-content img{width:100%;border-radius:6px;margin-top:6px}
+  .overlay{position:fixed;inset:0;background:rgba(4,8,17,.66);display:none;align-items:center;justify-content:center;z-index:1000;padding:16px}
+  .overlay.show{display:flex}
+  .modal{background:var(--panel);border:1px solid var(--line);border-radius:16px;width:470px;max-width:100%;max-height:92vh;overflow-y:auto;padding:20px}
+  .modal h2{margin:0 0 4px;font-size:17px}
+  .modal .sub{color:var(--muted);font-size:12px;margin:0 0 16px}
+  .field{margin-bottom:13px}
+  .field label{display:block;font-size:12px;color:var(--muted);margin-bottom:5px;font-weight:600}
+  .row{display:flex;gap:10px}
+  .row .field{flex:1}
+  .modal-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:8px}
+  .hint{font-size:11px;color:var(--muted);margin-top:4px;line-height:1.5}
+  .sync-dot{width:9px;height:9px;border-radius:50%;display:inline-block;margin-right:5px;vertical-align:middle}
+  .sync-cloud{background:var(--visited)} .sync-err{background:#ef4444} .sync-wait{background:var(--bucket)}
+  .thumb-preview{width:100%;height:120px;object-fit:cover;border-radius:9px;margin-top:6px;display:none}
+  #authGate{position:fixed;inset:0;background:var(--bg);z-index:5000;display:flex;align-items:center;justify-content:center;padding:20px}
+  #authGate.hide{display:none}
+  .gate-card{width:100%;max-width:380px;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:26px;text-align:center}
+  .gate-card h1{margin:0 0 6px;font-size:20px}
+  .gate-card p{margin:0 0 18px;font-size:13px;color:var(--muted);line-height:1.6}
+  .gate-card input{margin-bottom:10px;text-align:center}
+  .gate-msg{font-size:12px;margin-top:12px;line-height:1.6;min-height:18px}
+  .gate-msg.err{color:#ef4444}
+  .gate-msg.ok{color:var(--visited)}
+  #whoami{font-size:11px;color:var(--muted)}
+  /* Photos viewer (read-only, one destination per screen) */
+  #photoView{display:none;position:fixed;inset:0;background:var(--bg);z-index:800;flex-direction:column}
+  body.photomode #app{display:none}
+  body.photomode #photoView{display:flex}
+  .pv-top{padding:58px 16px 6px;text-align:center;flex:0 0 auto}
+  .pv-city{font-size:21px;font-weight:700;margin:0;line-height:1.3}
+  .pv-country{font-size:14px;color:var(--muted);margin:2px 0 0}
+  .pv-when{font-size:15px;margin:8px 0 0}
+  .pv-sub{display:flex;gap:8px;justify-content:center;align-items:center;margin-top:8px;flex-wrap:wrap}
+  .pv-imgwrap{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;padding:10px 12px}
+  .pv-imgwrap img{max-width:100%;max-height:100%;object-fit:contain;border-radius:12px;display:block}
+  .pv-noimg{color:var(--muted);font-size:13px;border:1px dashed var(--line);border-radius:12px;padding:38px 22px;text-align:center}
+  .pv-nav{flex:0 0 auto;display:flex;gap:10px;justify-content:center;align-items:center;padding:12px 16px calc(16px + env(safe-area-inset-bottom))}
+  .pv-nav button{flex:1;max-width:150px;padding:14px 10px;font-size:15px}
+  .pv-count{font-size:12px;color:var(--muted);min-width:66px;text-align:center}
+  @media(max-width:820px){
+    #app{flex-direction:column-reverse}
+    #sidebar{width:100%;max-width:100%;height:54vh}
+    #map{height:46vh}
+  }
+</style>
+</head>
+<body>
+<div id="authGate">
+  <div class="gate-card">
+    <h1>&#9992;&#65039; Travel Map</h1>
+    <p>Private to Evelyn &amp; Damian.<br>Enter your email and we&#39;ll send you a sign-in link.</p>
+    <input id="gateEmail" type="email" placeholder="you@example.com" autocomplete="email">
+    <button class="btn" id="gateBtn" style="width:100%">Email me a sign-in link</button>
+    <div class="gate-msg" id="gateMsg"></div>
+  </div>
+</div>
+<div id="viewTabs">
+  <button data-view="map" class="active">🗺 Map</button>
+  <button data-view="list">📋 List</button>
+  <button data-view="photo">&#128247; Photos</button>
+</div>
+
+<div id="app">
+  <div id="sidebar">
+    <header>
+      <h1>✈️ Evelyn &amp; Damian — Travel Map</h1>
+      <p><span id="count">0</span> places &middot; <span id="whoami"></span> <a href="#" id="signOut" style="color:var(--accent)">Sign out</a></p>
+    </header>
+    <div class="toolbar">
+      <button class="btn sm" id="addBtn">+ Add place</button>
+      <button class="btn ghost sm" id="exportBtn">Export</button>
+      <button class="btn ghost sm" id="importBtn">Import</button>
+      <input type="file" id="importFile" accept="application/json" style="display:none">
+      <span class="tb-sep"></span>
+      <div class="chip active" data-filter="all">All</div>
+      <div class="chip" data-filter="visited">Visited</div>
+      <div class="chip" data-filter="bucketlist">Bucket list</div>
+    </div>
+    <div id="list"></div>
+    <div id="cardNav">
+      <button class="btn secondary sm" id="prevCard">‹ Prev</button>
+      <button class="btn secondary sm" id="nextCard">Next ›</button>
+    </div>
+  </div>
+  <div id="map"></div>
+</div>
+
+<!-- List (table) view -->
+<div id="listView">
+  <div class="lv-inner">
+    <div class="lv-header-row">
+      <div>
+        <h2>All places <span id="countList" class="lv-count"></span></h2>
+        <p class="lv-hint">Tap any row to open it for editing.</p>
+      </div>
+      <div style="display:flex;gap:8px;flex-shrink:0">
+        <button class="btn secondary sm" id="renumberBtn" title="Re-sort every place by date and renumber 1..N">&#8645; Renumber by date</button>
+        <button class="btn sm" id="addBtnList">+ Add place</button>
+      </div>
+    </div>
+    <table id="venueTable">
+      <thead><tr><th data-sort="number">#</th><th data-sort="city">City</th><th data-sort="country">Country</th><th data-sort="when">When</th><th data-sort="status">Status</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Photos (read-only viewer) -->
+<div id="photoView">
+  <div class="pv-top">
+    <p class="pv-city" id="pvCity"></p>
+    <p class="pv-country" id="pvCountry"></p>
+    <p class="pv-when" id="pvWhen"></p>
+    <div class="pv-sub"><span class="status-pill" id="pvStatus"></span></div>
+  </div>
+  <div class="pv-imgwrap" id="pvImgWrap"></div>
+  <div class="pv-nav">
+    <button class="btn secondary" id="pvPrev">&lsaquo; Back</button>
+    <span class="pv-count" id="pvCount"></span>
+    <button class="btn secondary" id="pvNext">Next &rsaquo;</button>
+  </div>
+</div>
+
+<!-- Add / Edit modal -->
+<div class="overlay" id="cardOverlay">
+  <div class="modal">
+    <h2 id="cardTitle">Add a place</h2>
+    <p class="sub">Fill in the details — we'll drop a numbered pin on the map for you.</p>
+    <div class="row">
+      <div class="field"><label>City</label><input id="f_city" placeholder="e.g. Kyoto"></div>
+      <div class="field"><label>Country</label><input id="f_country" placeholder="e.g. Japan"></div>
+    </div>
+    <div class="field">
+      <label>Status</label>
+      <select id="f_status">
+        <option value="bucketlist">Bucket list (planned)</option>
+        <option value="visited">Visited</option>
+      </select>
+    </div>
+    <div class="row">
+      <div class="field"><label id="lbl_month">Planned Month</label>
+        <select id="f_month">
+          <option value="">—</option>
+          <option>January</option><option>February</option><option>March</option><option>April</option>
+          <option>May</option><option>June</option><option>July</option><option>August</option>
+          <option>September</option><option>October</option><option>November</option><option>December</option>
+        </select>
+      </div>
+      <div class="field"><label id="lbl_year">Planned Year</label><input id="f_year" placeholder="e.g. 2026"></div>
+    </div>
+    <div class="field"><label>Added by</label>
+      <select id="f_by"><option>Evelyn</option><option>Damian</option></select>
+    </div>
+    <div class="field">
+      <label>Photo (one per card)</label>
+      <input type="file" id="f_photo" accept="image/*">
+      <img id="photoPreview" class="thumb-preview">
+    </div>
+    <div class="field"><label>Evelyn's memories</label>
+      <textarea id="f_evelyn" placeholder="Evelyn's notes..."></textarea>
+    </div>
+    <div class="field"><label>Damian's memories</label>
+      <textarea id="f_damian" placeholder="Damian's notes..."></textarea>
+    </div>
+    <div class="hint" id="geoHint">Tip: we look up the map location from the city + country automatically.</div>
+    <div class="modal-actions">
+      <button class="btn secondary" id="cancelCard">Cancel</button>
+      <button class="btn" id="saveCard">Save place</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ------------------------------------------------------------------ */
+/*  Supabase config (browser-safe publishable key, RLS enabled)        */
+/* ------------------------------------------------------------------ */
+const SUPABASE_URL = 'https://ppheguszetoeukmbibcw.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_15IJFkI8hl0snHKM_fsCFg_xMDuDRpE';
+const BUCKET = 'travel-photos';
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+/* ------------------------------------------------------------------ */
+/*  State                                                              */
+/* ------------------------------------------------------------------ */
+let cards = [];
+let editingId = null;
+let filter = 'all';
+let pendingPhotoFile = null;
+const markers = {};
+const LS_CACHE = 'travelCache';
+let tableSort = {column: 'number', direction: 'asc'}; // Track table sort state
+
+/* ------------------------------------------------------------------ */
+/*  Map                                                                */
+/* ------------------------------------------------------------------ */
+const map = L.map('map', {worldCopyJump:true}).setView([20, 10], 2);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+  attribution:'&copy; OpenStreetMap &copy; CARTO', maxZoom:19
+}).addTo(map);
+
+function pinIcon(card){
+  return L.divIcon({className:'', html:`<div class="pin ${card.status}">${card.number}</div>`,
+    iconSize:[28,28], iconAnchor:[14,14], popupAnchor:[0,-14]});
+}
+
+/* ------------------------------------------------------------------ */
+/*  Row <-> app object mapping (DB is snake_case)                      */
+/* ------------------------------------------------------------------ */
+function fromRow(r){return{id:r.id,number:r.number,city:r.city,country:r.country,status:r.status,
+  month:r.month,year:r.year,addedBy:r.added_by,commentEvelyn:r.comment_evelyn,commentDamian:r.comment_damian,
+  imageUrl:r.image_url,lat:r.lat,lng:r.lng,createdAt:r.created_at};}
+function toRow(c){return{id:c.id,number:c.number,city:c.city,country:c.country,status:c.status,
+  month:c.month,year:c.year,added_by:c.addedBy,comment_evelyn:c.commentEvelyn,comment_damian:c.commentDamian,
+  image_url:c.imageUrl,lat:c.lat,lng:c.lng,created_at:c.createdAt};}
+
+/* ------------------------------------------------------------------ */
+/*  Sync status                                                        */
+/* ------------------------------------------------------------------ */
+function setSync(kind,text){ /* sync status label removed from the UI */ }
+
+/* ------------------------------------------------------------------ */
+/*  Data load + realtime                                               */
+/* ------------------------------------------------------------------ */
+async function loadCards(){
+  const {data,error} = await sb.from('travel_cards').select('*').order('number',{ascending:true});
+  if(error){ console.error(error); setSync('err','Sync error — showing cached'); loadCache(); render(); return; }
+  cards = data.map(fromRow);
+  localStorage.setItem(LS_CACHE, JSON.stringify(cards));
+  setSync('cloud','Cloud synced (Supabase)');
+  render();
+}
+function loadCache(){ try{ cards=JSON.parse(localStorage.getItem(LS_CACHE)||'[]'); }catch(e){ cards=[]; } }
+
+function subscribeRealtime(){
+  sb.channel('travel_cards_rt')
+    .on('postgres_changes',{event:'*',schema:'public',table:'travel_cards'}, ()=>{
+      // don't clobber a comment box the user is typing in
+      const a=document.activeElement;
+      if(a && a.tagName==='TEXTAREA'){ window._needsReload=true; return; }
+      loadCards();
+    })
+    .subscribe();
+}
+
+/* ------------------------------------------------------------------ */
+/*  Geocoding                                                          */
+/* ------------------------------------------------------------------ */
+async function geocode(city,country){
+  const url=`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(city+', '+country)}&format=json&limit=1`;
+  const res=await fetch(url,{headers:{'Accept':'application/json'}});
+  const d=await res.json();
+  return (d&&d.length)?{lat:parseFloat(d[0].lat),lng:parseFloat(d[0].lon)}:null;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Photo upload                                                       */
+/* ------------------------------------------------------------------ */
+async function uploadPhoto(cardId,file){
+  const ext=(file.name.split('.').pop()||'jpg').toLowerCase();
+  const path=`${cardId}/${Date.now()}.${ext}`;
+  const {error}=await sb.storage.from(BUCKET).upload(path,file,{upsert:true,contentType:file.type});
+  if(error){ console.error(error); alert('Photo upload failed: '+error.message); return null; }
+  return sb.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
+}
+
+/* ------------------------------------------------------------------ */
+/*  Persistence                                                        */
+/* ------------------------------------------------------------------ */
+async function upsertCard(card){
+  const {error}=await sb.from('travel_cards').upsert(toRow(card));
+  if(error){ console.error(error); alert('Save failed: '+error.message); }
+}
+async function deleteCard(id){
+  const {error}=await sb.from('travel_cards').delete().eq('id',id);
+  if(error){ console.error(error); alert('Delete failed: '+error.message); }
+}
+
+/* ------------------------------------------------------------------ */
+/*  Rendering                                                          */
+/* ------------------------------------------------------------------ */
+function nextNumber(){ return cards.length?Math.max(...cards.map(c=>c.number||0))+1:1; }
+
+// Convert month name to number (January=1, etc.)
+function monthToNumber(month){
+  const months={January:1,February:2,March:3,April:4,May:5,June:6,July:7,August:8,September:9,October:10,November:11,December:12};
+  return months[month]||0;
+}
+
+// Sort table data based on sort state
+function sortTableData(shown){
+  const col=tableSort.column;
+  const dir=tableSort.direction==='asc'?1:-1;
+  const sorted=[...shown];
+  sorted.sort((a,b)=>{
+    let aVal,bVal;
+    if(col==='when'){
+      // Sort by year first, then month
+      const aYear=parseInt(a.year)||0;
+      const bYear=parseInt(b.year)||0;
+      if(aYear!==bYear) return (aYear-bYear)*dir;
+      const aMonth=monthToNumber(a.month);
+      const bMonth=monthToNumber(b.month);
+      return (aMonth-bMonth)*dir;
+    }else if(col==='number'){ aVal=a.number||0; bVal=b.number||0; return (aVal-bVal)*dir; }
+    else if(col==='city'){ aVal=(a.city||'').toLowerCase(); bVal=(b.city||'').toLowerCase(); }
+    else if(col==='country'){ aVal=(a.country||'').toLowerCase(); bVal=(b.country||'').toLowerCase(); }
+    else if(col==='status'){ aVal=a.status||''; bVal=b.status||''; }
+    if(aVal<bVal) return -1*dir; if(aVal>bVal) return 1*dir; return 0;
+  });
+  return sorted;
+}
+
+function render(){
+  document.getElementById('count').textContent=cards.length;
+  const list=document.getElementById('list');
+  const shown=cards.filter(c=>filter==='all'||c.status===filter).sort((a,b)=>(a.number||0)-(b.number||0));
+  list.innerHTML='';
+  if(!shown.length){ list.innerHTML=`<div class="empty">No places yet.<br>Click <b>+ Add place</b> to pin your first destination.</div>`; }
+  shown.forEach((c,idx)=>{
+    const whenLabel=c.status==='visited'?'Visited':'Planned';
+    const when=(c.month||c.year)?`${whenLabel}: ${c.month||''} ${c.year||''}`.trim():`${whenLabel}: —`;
+    const el=document.createElement('div');
+    el.className=`card ${c.status}`;
+    el.innerHTML=`
+      <div class="num">${c.number}</div>
+      ${c.imageUrl?`<img class="photo" src="${esc(c.imageUrl)}" alt="">`:''}
+      <div class="place">${esc(c.city)}</div>
+      <div class="country">${esc(c.country)}</div>
+      <div class="meta">
+        <span class="when">${esc(when)}</span>
+        <span class="status-pill ${c.status}">${c.status==='visited'?'Visited':'Bucket list'}</span>
+      </div>
+      <div class="comment-block">
+        <label>Evelyn's memories</label>
+        <textarea data-id="${c.id}" data-who="evelyn" placeholder="Evelyn's notes...">${esc(c.commentEvelyn||'')}</textarea>
+        <label>Damian's memories</label>
+        <textarea data-id="${c.id}" data-who="damian" placeholder="Damian's notes...">${esc(c.commentDamian||'')}</textarea>
+      </div>
+      <div class="actions">
+        ${c.status==='bucketlist'
+          ?`<button class="btn sm" data-act="mark" data-id="${c.id}">✓ Mark visited</button>`
+          :`<button class="btn secondary sm" data-act="unmark" data-id="${c.id}">↩ Back to bucket list</button>`}
+        <button class="btn secondary sm" data-act="edit" data-id="${c.id}">Edit</button>
+        <button class="btn ghost sm" data-act="del" data-id="${c.id}">Delete</button>
+        <button class="btn ghost sm" data-act="focus" data-id="${c.id}">📍 Show</button>
+        <span class="saved-flash" id="flash-${c.id}">saved ✓</span>
+      </div>`;
+    list.appendChild(el);
+  });
+  // Make each card fill one screen so you review destinations one-by-one
+  const h=list.clientHeight;
+  document.documentElement.style.setProperty('--cardH', h>0?(h-16)+'px':'auto');
+  document.getElementById('cardNav').style.display = shown.length>1 ? 'flex' : 'none';
+  renderMarkers();
+  renderTable(shown);
+  if(document.body.classList.contains('photomode')) renderPhoto();
+}
+
+// List/table view — one row per venue, tap a row to edit
+function renderTable(shown){
+  const tbody=document.querySelector('#venueTable tbody');
+  if(!tbody) return;
+  document.getElementById('countList').textContent = '· '+cards.length;
+  tbody.innerHTML='';
+  // Update header indicators
+  document.querySelectorAll('#venueTable th').forEach(th=>{
+    th.classList.remove('sort-active','sort-asc','sort-desc');
+    if(th.dataset.sort===tableSort.column){
+      th.classList.add('sort-active',`sort-${tableSort.direction}`);
+    }
+  });
+  if(!shown.length){ tbody.innerHTML=`<tr><td colspan="5" style="color:var(--muted);padding:20px 10px">No places yet.</td></tr>`; return; }
+  const sorted=sortTableData(shown);
+  sorted.forEach(c=>{
+    const when=[c.month,c.year].filter(Boolean).join(' ')||'—';
+    const tr=document.createElement('tr');
+    tr.dataset.id=c.id;
+    tr.innerHTML=`<td class="tnum">${c.number}</td>
+      <td class="tcity">${esc(c.city)}</td>
+      <td>${esc(c.country)}</td>
+      <td>${esc(when)}</td>
+      <td><span class="tstatus ${c.status}">${c.status==='visited'?'Visited':'Bucket list'}</span></td>`;
+    tbody.appendChild(tr);
+  });
+}
+// recompute the one-screen card height on window resize
+window.addEventListener('resize',()=>{
+  const list=document.getElementById('list');
+  const h=list.clientHeight;
+  document.documentElement.style.setProperty('--cardH', h>0?(h-16)+'px':'auto');
+});
+
+function renderMarkers(){
+  Object.values(markers).forEach(m=>map.removeLayer(m));
+  for(const k in markers) delete markers[k];
+  cards.forEach(c=>{
+    if(typeof c.lat!=='number'||typeof c.lng!=='number') return;
+    if(filter!=='all'&&c.status!==filter) return;
+    const m=L.marker([c.lat,c.lng],{icon:pinIcon(c)}).addTo(map);
+    const whenLabel=c.status==='visited'?'Visited':'Planned';
+    m.bindPopup(`<b>${esc(c.city)}, ${esc(c.country)}</b><br>
+      ${whenLabel}: ${esc(c.month||'')} ${esc(c.year||'')}<br>
+      <span style="color:${c.status==='visited'?'#16a34a':'#d97706'}">${c.status==='visited'?'Visited':'Bucket list'}</span> · #${c.number}
+      ${c.imageUrl?`<br><img src="${esc(c.imageUrl)}" alt="">`:''}`);
+    markers[c.id]=m;
+  });
+}
+
+function esc(s){return String(s).replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));}
+
+/* ------------------------------------------------------------------ */
+/*  Modal                                                              */
+/* ------------------------------------------------------------------ */
+function updateWhenLabels(){
+  const st=document.getElementById('f_status').value;
+  document.getElementById('lbl_month').textContent=st==='visited'?'Visited Month':'Planned Month';
+  document.getElementById('lbl_year').textContent =st==='visited'?'Visited Year':'Planned Year';
+}
+document.getElementById('f_status').addEventListener('change',updateWhenLabels);
+
+function openCard(card){
+  editingId=card?card.id:null;
+  pendingPhotoFile=null;
+  document.getElementById('cardTitle').textContent=card?'Edit place':'Add a place';
+  document.getElementById('f_city').value=card?.city||'';
+  document.getElementById('f_country').value=card?.country||'';
+  document.getElementById('f_status').value=card?.status||'bucketlist';
+  document.getElementById('f_month').value=card?.month||'';
+  document.getElementById('f_year').value=card?.year||'';
+  document.getElementById('f_by').value=card?.addedBy||'Evelyn';
+  document.getElementById('f_evelyn').value=card?.commentEvelyn||'';
+  document.getElementById('f_damian').value=card?.commentDamian||'';
+  document.getElementById('f_photo').value='';
+  const prev=document.getElementById('photoPreview');
+  if(card?.imageUrl){ prev.src=card.imageUrl; prev.style.display='block'; } else { prev.style.display='none'; }
+  document.getElementById('geoHint').textContent='Tip: we look up the map location from the city + country automatically.';
+  updateWhenLabels();
+  document.body.classList.add('editing');            // hide the map while editing
+  document.getElementById('cardOverlay').classList.add('show');
+}
+function closeCard(){
+  document.getElementById('cardOverlay').classList.remove('show');
+  document.body.classList.remove('editing');
+  editingId=null; pendingPhotoFile=null;
+  setTimeout(()=>map.invalidateSize(),150);          // let Leaflet re-measure after the map reappears
+}
+
+document.getElementById('f_photo').addEventListener('change',e=>{
+  const f=e.target.files[0]; pendingPhotoFile=f||null;
+  const prev=document.getElementById('photoPreview');
+  if(f){ prev.src=URL.createObjectURL(f); prev.style.display='block'; }
+});
+
+async function saveCardHandler(){
+  const city=document.getElementById('f_city').value.trim();
+  const country=document.getElementById('f_country').value.trim();
+  if(!city||!country){ document.getElementById('geoHint').textContent='Please enter both a city and a country.'; return; }
+  const status=document.getElementById('f_status').value;
+  const month=document.getElementById('f_month').value;
+  const year=document.getElementById('f_year').value.trim();
+  const addedBy=document.getElementById('f_by').value;
+  const commentEvelyn=document.getElementById('f_evelyn').value;
+  const commentDamian=document.getElementById('f_damian').value;
+
+  const existing=editingId?cards.find(c=>c.id===editingId):null;
+  const btn=document.getElementById('saveCard'); btn.disabled=true; btn.textContent='Saving…';
+
+  let lat=existing?.lat, lng=existing?.lng;
+  if(!existing||existing.city!==city||existing.country!==country){
+    try{ const g=await geocode(city,country); if(g){lat=g.lat;lng=g.lng;} else{ document.getElementById('geoHint').textContent='Could not find that location — saved without a pin.'; } }
+    catch(e){ document.getElementById('geoHint').textContent='Location lookup failed — saved without a pin.'; }
+  }
+
+  const card = existing ? {...existing} : {
+    id:'c_'+Date.now()+'_'+Math.random().toString(36).slice(2,7),
+    number:nextNumber(), commentEvelyn:'', commentDamian:'', imageUrl:null, createdAt:Date.now()
+  };
+  Object.assign(card,{city,country,status,month,year,addedBy,commentEvelyn,commentDamian,lat,lng});
+
+  if(pendingPhotoFile){
+    btn.textContent='Uploading photo…';
+    const url=await uploadPhoto(card.id,pendingPhotoFile);
+    if(url) card.imageUrl=url;
+  }
+
+  await upsertCard(card);
+  btn.disabled=false; btn.textContent='Save place';
+  closeCard();
+  await loadCards();
+  if(typeof lat==='number') map.flyTo([lat,lng],5,{duration:.8});
+}
+
+/* ------------------------------------------------------------------ */
+/*  Events                                                             */
+/* ------------------------------------------------------------------ */
+document.getElementById('addBtn').onclick=()=>openCard(null);
+document.getElementById('addBtnList').onclick=()=>openCard(null);
+
+// Re-sort every place by date (year, then month) and rewrite numbering 1..N
+async function renumberByDate(){
+  const btn=document.getElementById('renumberBtn');
+  if(!confirm('Re-sort all places by date and renumber them 1 to N?')) return;
+  const label=btn.textContent; btn.disabled=true; btn.textContent='Renumbering...';
+  const res=await sb.from('travel_cards').select('*');
+  if(res.error){ alert('Could not load places: '+res.error.message); btn.disabled=false; btn.textContent=label; return; }
+  const key=c=>(parseInt(c.year)||0)*100+monthToNumber(c.month);
+  const sorted=[...res.data].sort((a,b)=>{ const d=key(a)-key(b); if(d) return d; return (a.city||'').localeCompare(b.city||''); });
+  let changed=0, failed=0;
+  for(let i=0;i<sorted.length;i++){
+    if(sorted[i].number===i+1) continue;
+    const up=await sb.from('travel_cards').update({number:i+1}).eq('id',sorted[i].id);
+    if(up.error) failed++; else changed++;
+    btn.textContent='Renumbering '+(i+1)+'/'+sorted.length;
+  }
+  await loadCards();
+  tableSort={column:'number',direction:'asc'};
+  render();
+  btn.disabled=false; btn.textContent=label;
+  alert('Done. '+sorted.length+' places sorted by date; '+changed+' renumbered'+(failed?', '+failed+' failed':'')+'.');
+}
+document.getElementById('renumberBtn').onclick=renumberByDate;
+document.getElementById('cancelCard').onclick=closeCard;
+document.getElementById('saveCard').onclick=saveCardHandler;
+
+// Prev / Next arrows to jump between destination cards
+function goCard(delta){
+  const list=document.getElementById('list');
+  const cardsEl=[...list.querySelectorAll('.card')];
+  if(cardsEl.length<2) return;
+  const listTop=list.getBoundingClientRect().top;
+  let idx=0,best=Infinity;
+  cardsEl.forEach((el,i)=>{ const d=Math.abs(el.getBoundingClientRect().top-listTop); if(d<best){best=d;idx=i;} });
+  const target=Math.max(0,Math.min(cardsEl.length-1,idx+delta));
+  const top=list.scrollTop + (cardsEl[target].getBoundingClientRect().top - listTop);
+  // temporarily lift scroll-snap so the programmatic jump isn't blocked, then restore it
+  list.style.scrollSnapType='none';
+  list.scrollTop=top;
+  setTimeout(()=>{ list.style.scrollSnapType='y mandatory'; }, 60);
+}
+document.getElementById('prevCard').onclick=()=>goCard(-1);
+document.getElementById('nextCard').onclick=()=>goCard(1);
+
+// Map / List view switching
+function switchView(view){
+  document.body.classList.toggle('listmode', view==='list');
+  document.body.classList.toggle('photomode', view==='photo');
+  document.querySelectorAll('#viewTabs button').forEach(b=>b.classList.toggle('active', b.dataset.view===view));
+  if(view==='map') setTimeout(()=>map.invalidateSize(),120);
+  if(view==='photo') renderPhoto();
+}
+
+/* ---- Photos viewer: one destination per screen, view only ---- */
+let photoIdx=0;
+function photoList(){ return cards.slice().sort(function(a,b){ return (a.number||0)-(b.number||0); }); }
+function renderPhoto(){
+  const list=photoList();
+  const city=document.getElementById('pvCity'), ctry=document.getElementById('pvCountry');
+  const when=document.getElementById('pvWhen'), st=document.getElementById('pvStatus');
+  const wrap=document.getElementById('pvImgWrap'), cnt=document.getElementById('pvCount');
+  if(!list.length){ city.textContent='No places yet'; ctry.textContent=''; when.textContent=''; st.style.display='none'; wrap.innerHTML=''; cnt.textContent=''; return; }
+  if(photoIdx<0) photoIdx=0;
+  if(photoIdx>list.length-1) photoIdx=list.length-1;
+  const c=list[photoIdx];
+  const lbl=c.status==='visited'?'Visited':'Planned';
+  city.textContent='#'+c.number+'  '+(c.city||'');
+  ctry.textContent=c.country||'';
+  when.textContent=lbl+': '+((c.month||'')+' '+(c.year||'')).trim();
+  st.style.display=''; st.className='status-pill '+c.status;
+  st.textContent=c.status==='visited'?'Visited':'Bucket list';
+  wrap.innerHTML = c.imageUrl ? '<img src="'+esc(c.imageUrl)+'" alt="">' : '<div class="pv-noimg">No photo added for this destination yet</div>';
+  cnt.textContent=(photoIdx+1)+' / '+list.length;
+}
+function goPhoto(d){ const n=photoList().length; if(!n) return; photoIdx=(photoIdx+d+n)%n; renderPhoto(); }
+document.getElementById('pvPrev').onclick=function(){ goPhoto(-1); };
+document.getElementById('pvNext').onclick=function(){ goPhoto(1); };
+document.querySelectorAll('#viewTabs button').forEach(b=>{ b.onclick=()=>switchView(b.dataset.view); });
+
+// Tap a table row to open it for editing
+document.querySelector('#venueTable tbody').addEventListener('click',e=>{
+  const tr=e.target.closest('tr'); if(!tr||!tr.dataset.id) return;
+  const card=cards.find(c=>c.id===tr.dataset.id); if(card) openCard(card);
+});
+
+// Click table headers to sort
+document.querySelectorAll('#venueTable th[data-sort]').forEach(th=>{
+  th.addEventListener('click',()=>{
+    const col=th.dataset.sort;
+    if(tableSort.column===col){ tableSort.direction=tableSort.direction==='asc'?'desc':'asc'; }
+    else{ tableSort.column=col; tableSort.direction='asc'; }
+    render();
+  });
+});
+// keyboard arrows too (ignored while typing in a field or editing)
+document.addEventListener('keydown',e=>{
+  if(document.body.classList.contains('editing')) return;
+  const t=e.target.tagName;
+  if(t==='TEXTAREA'||t==='INPUT'||t==='SELECT') return;
+  const ph=document.body.classList.contains('photomode');
+  if(e.key==='ArrowRight'||e.key==='ArrowDown'){ ph?goPhoto(1):goCard(1); e.preventDefault(); }
+  else if(e.key==='ArrowLeft'||e.key==='ArrowUp'){ ph?goPhoto(-1):goCard(-1); e.preventDefault(); }
+});
+
+document.querySelectorAll('.chip').forEach(ch=>{
+  ch.onclick=()=>{ document.querySelectorAll('.chip').forEach(c=>c.classList.remove('active')); ch.classList.add('active'); filter=ch.dataset.filter; render(); };
+});
+
+document.getElementById('list').addEventListener('click',async e=>{
+  const b=e.target.closest('button'); if(!b) return;
+  const id=b.dataset.id; const card=cards.find(c=>c.id===id); if(!card) return;
+  const act=b.dataset.act;
+  if(act==='edit') openCard(card);
+  else if(act==='del'){ if(confirm(`Delete ${card.city}, ${card.country}?`)){ await deleteCard(id); await loadCards(); } }
+  else if(act==='mark'){ card.status='visited'; await upsertCard(card); await loadCards(); }
+  else if(act==='unmark'){ card.status='bucketlist'; await upsertCard(card); await loadCards(); }
+  else if(act==='focus'){ if(typeof card.lat==='number'){ map.flyTo([card.lat,card.lng],6,{duration:.8}); markers[id]?.openPopup(); } }
+});
+
+// comment autosave
+let commentTimers={};
+document.getElementById('list').addEventListener('input',e=>{
+  const t=e.target; if(t.tagName!=='TEXTAREA') return;
+  const id=t.dataset.id,who=t.dataset.who; const card=cards.find(c=>c.id===id); if(!card) return;
+  if(who==='evelyn') card.commentEvelyn=t.value; else card.commentDamian=t.value;
+  clearTimeout(commentTimers[id]);
+  commentTimers[id]=setTimeout(async ()=>{
+    await upsertCard(card);
+    const f=document.getElementById('flash-'+id); if(f){ f.classList.add('show'); setTimeout(()=>f.classList.remove('show'),1200); }
+  },700);
+});
+// when a comment box loses focus, apply any deferred realtime reload
+document.getElementById('list').addEventListener('focusout',e=>{
+  if(e.target.tagName==='TEXTAREA' && window._needsReload){ window._needsReload=false; loadCards(); }
+});
+
+// Export / Import
+document.getElementById('exportBtn').onclick=()=>{
+  const blob=new Blob([JSON.stringify(cards,null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='travel-map-data.json'; a.click();
+};
+document.getElementById('importBtn').onclick=()=>document.getElementById('importFile').click();
+document.getElementById('importFile').onchange=e=>{
+  const file=e.target.files[0]; if(!file) return;
+  const r=new FileReader();
+  r.onload=async ()=>{
+    try{
+      const data=JSON.parse(r.result); if(!Array.isArray(data)) throw 0;
+      for(const c of data){ if(!c.id) c.id='c_'+Date.now()+Math.random().toString(36).slice(2,7); await upsertCard(c); }
+      await loadCards(); alert('Imported '+data.length+' places.');
+    }catch(err){ alert('Could not read that file.'); }
+  };
+  r.readAsText(file);
+};
+
+// close modal on backdrop click
+document.getElementById('cardOverlay').addEventListener('click',e=>{ if(e.target.id==='cardOverlay') closeCard(); });
+
+/* ------------------------------------------------------------------ */
+/*  Boot                                                               */
+/* ------------------------------------------------------------------ */
+/* ---- Access control: only these accounts may use the app ---- */
+const ALLOWED=['evelyn.phang@temus.com','evelyn.phang@gmail.com','da3ian.tay@gmail.com','damian.tay@ncs.com.sg'];
+let booted=false;
+function gateMsg(t,cls){ const e=document.getElementById('gateMsg'); e.textContent=t; e.className='gate-msg'+(cls?' '+cls:''); }
+function showGate(){ document.getElementById('authGate').classList.remove('hide'); }
+function hideGate(){ document.getElementById('authGate').classList.add('hide'); }
+async function sendLink(){
+  const email=document.getElementById('gateEmail').value.trim().toLowerCase();
+  if(!email){ gateMsg('Please enter your email address.','err'); return; }
+  if(ALLOWED.indexOf(email)===-1){ gateMsg('That email is not authorised for this app.','err'); return; }
+  const btn=document.getElementById('gateBtn'); btn.disabled=true; btn.textContent='Sending...';
+  const res=await sb.auth.signInWithOtp({email:email,options:{emailRedirectTo:location.origin+location.pathname}});
+  btn.disabled=false; btn.textContent='Email me a sign-in link';
+  if(res.error) gateMsg(res.error.message,'err');
+  else gateMsg('Sign-in link sent. Check your inbox (and spam).','ok');
+}
+async function startApp(session){
+  const email=((session&&session.user&&session.user.email)||'').toLowerCase();
+  if(ALLOWED.indexOf(email)===-1){ await sb.auth.signOut(); showGate(); gateMsg('That account is not authorised for this app.','err'); return; }
+  document.getElementById('whoami').textContent=email;
+  hideGate();
+  if(booted) return;
+  booted=true;
+  loadCache(); render();
+  await loadCards();
+  subscribeRealtime();
+  setTimeout(function(){ map.invalidateSize(); },200);
+}
+document.getElementById('gateBtn').onclick=sendLink;
+document.getElementById('gateEmail').addEventListener('keydown',function(e){ if(e.key==='Enter') sendLink(); });
+document.getElementById('signOut').onclick=async function(e){ e.preventDefault(); await sb.auth.signOut(); location.href=location.origin+location.pathname; };
+sb.auth.onAuthStateChange(function(_evt,session){ if(session) startApp(session); else { booted=false; cards=[]; showGate(); } });
+(async function(){ const g=await sb.auth.getSession(); if(g.data.session) startApp(g.data.session); else showGate(); })();
+</script>
+</body>
+</html>
