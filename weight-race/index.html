@@ -166,9 +166,9 @@
 
     <!-- chart -->
     <div class="card">
-      <h3 style="margin-top:0">📈 Progress vs plan</h3>
+      <h3 id="chartTitle" style="margin-top:0">📈 Actuals vs target</h3>
       <canvas id="chart" height="300"></canvas>
-      <div class="note">Solid = actual weight · Dashed = 1.5&nbsp;kg/week plan. Being <b>below</b> your plan line means you're ahead. ▲ markers show target weights.</div>
+      <div class="note">Solid = actual weigh-ins · Dashed = target path at 1.5&nbsp;kg/week. A lower actual weight is ahead of target.</div>
     </div>
     </div><!-- /tab-dashboard -->
 
@@ -434,31 +434,29 @@ function renderChampion(){
 }
 
 function renderChart(){
+  // Keep the chart deliberately simple: the signed-in person's actuals versus their target path.
+  const person = me || "Evelyn";
+  const colour = person === "Evelyn" ? "#ff5d8f" : "#3ea6ff";
   const labels = [];
-  const start = new Date(Math.min(...PEOPLE.map(p=>new Date(settings[p].start_date))));
+  const start = new Date(settings[person].start_date);
   const end = new Date(TARGET_DATE);
   for(let d=new Date(start); d<=end; d.setDate(d.getDate()+7)){
     labels.push(d.toLocaleDateString('en-CA'));
   }
   if(labels[labels.length-1]!==TARGET_DATE) labels.push(TARGET_DATE);
 
-  const planDS = (p,color)=>({
-    label:p+" plan", data:labels.map(dt=>planWeight(p,dt)),
-    borderColor:color, borderDash:[6,5], borderWidth:2, pointRadius:0, tension:0
-  });
-  const actualDS = (p,color)=>{
-    const pts = entries.filter(e=>e.person===p).map(e=>({x:e.entry_date,y:e.weight}));
-    return {label:p+" actual", data:pts, borderColor:color, backgroundColor:color,
-      borderWidth:3, pointRadius:3, tension:.25};
-  };
-  const targetDS = (p,color)=>({
-    label:p+" target", data:[{x:TARGET_DATE,y:settings[p].target_weight}],
-    borderColor:color, backgroundColor:color, pointStyle:'triangle', pointRadius:9, showLine:false
-  });
-
   const data = {labels, datasets:[
-    actualDS("Evelyn","#ff5d8f"), planDS("Evelyn","#ff5d8f"), targetDS("Evelyn","#ff5d8f"),
-    actualDS("Damian","#3ea6ff"), planDS("Damian","#3ea6ff"), targetDS("Damian","#3ea6ff"),
+    {
+      label:"Actuals",
+      data:entries.filter(e=>e.person===person).map(e=>({x:e.entry_date,y:e.weight})),
+      borderColor:colour, backgroundColor:colour, borderWidth:3, pointRadius:4, tension:.25
+    },
+    {
+      label:"Target",
+      data:labels.map(dt=>planWeight(person,dt)),
+      borderColor:"#aeb8d9", backgroundColor:"#aeb8d9", borderDash:[7,5],
+      borderWidth:2, pointRadius:0, tension:0
+    }
   ]};
   const opts = {
     responsive:true, interaction:{mode:'nearest',intersect:false},
@@ -466,8 +464,9 @@ function renderChart(){
       x:{type:'category', grid:{color:'#2b3160'}, ticks:{color:'#9aa3c7',maxTicksLimit:10}},
       y:{grid:{color:'#2b3160'}, ticks:{color:'#9aa3c7'}, title:{display:true,text:'kg',color:'#9aa3c7'}}
     },
-    plugins:{legend:{labels:{color:'#eef1ff',usePointStyle:true,filter:i=>!i.text.includes('target')}}}
+    plugins:{legend:{labels:{color:'#eef1ff',usePointStyle:true}}}
   };
+  $("chartTitle").textContent = "📈 "+person+" — Actuals vs target";
   if(chart) chart.destroy();
   chart = new Chart($("chart"), {type:'line', data, options:opts});
 }
