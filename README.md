@@ -12,10 +12,10 @@ GitHub Pages deploys the repository root through `.github/workflows/pages.yml`.
 
 Expected URLs:
 
-- `https://evelynphang.github.io/evelyn-apps/`
-- `https://evelynphang.github.io/evelyn-apps/restaurant-chooser/`
-- `https://evelynphang.github.io/evelyn-apps/weight-race/`
-- `https://evelynphang.github.io/evelyn-apps/travel-map/`
+- `https://evelynphang.github.io/personalapps/`
+- `https://evelynphang.github.io/personalapps/restaurant-chooser/`
+- `https://evelynphang.github.io/personalapps/weight-race/`
+- `https://evelynphang.github.io/personalapps/travel-map/`
 
 ## Data services
 
