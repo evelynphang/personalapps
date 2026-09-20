@@ -1,0 +1,603 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Evelyn &amp; Damian — Weight Race 🏁</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🏁</text></svg>" />
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#0f1220; --card:#191d33; --card2:#20264a; --line:#2b3160;
+    --ink:#eef1ff; --muted:#9aa3c7; --evelyn:#ff5d8f; --damian:#3ea6ff;
+    --good:#38d39f; --bad:#ff6b6b; --warn:#ffb020; --accent:#8b7bff;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+    background:radial-gradient(1200px 600px at 50% -10%,#1b2145 0%,var(--bg) 60%);
+    color:var(--ink); min-height:100vh; padding:16px; -webkit-tap-highlight-color:transparent;
+  }
+  .wrap{max-width:960px;margin:0 auto}
+  h1{font-size:22px;margin:6px 0 2px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:16px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:18px;margin-bottom:16px;box-shadow:0 8px 30px rgba(0,0,0,.25)}
+  .row{display:flex;gap:14px;flex-wrap:wrap}
+  .row>*{flex:1;min-width:220px}
+  label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px}
+  input,select,button{font-size:16px;font-family:inherit}
+  input,select{width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--line);background:var(--card2);color:var(--ink);outline:none}
+  input:focus,select:focus{border-color:var(--accent)}
+  button{cursor:pointer;border:none;border-radius:12px;padding:12px 18px;background:var(--accent);color:#fff;font-weight:600;transition:transform .05s ease,filter .15s ease}
+  button:hover{filter:brightness(1.08)} button:active{transform:translateY(1px)}
+  button.ghost{background:var(--card2);border:1px solid var(--line);color:var(--ink)}
+  .pill{display:inline-flex;align-items:center;gap:6px;padding:5px 11px;border-radius:999px;font-size:12px;font-weight:600}
+  .pill.evelyn{background:rgba(255,93,143,.16);color:var(--evelyn)}
+  .pill.damian{background:rgba(62,166,255,.16);color:var(--damian)}
+  .banner{display:none;align-items:center;gap:12px;background:linear-gradient(90deg,#3a1220,#4a1327);border:1px solid #7a2140;color:#ffd9e2;padding:14px 16px;border-radius:14px;margin-bottom:16px;animation:pulse 1.6s infinite}
+  .banner.show{display:flex}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(255,80,120,.35)}50%{box-shadow:0 0 0 10px rgba(255,80,120,0)}}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:640px){.grid2{grid-template-columns:1fr}}
+  .person-card{border-radius:16px;padding:16px;border:1px solid var(--line);background:var(--card2);position:relative;overflow:hidden}
+  .person-card.evelyn{border-color:rgba(255,93,143,.4)}
+  .person-card.damian{border-color:rgba(62,166,255,.4)}
+  .person-card h3{margin:0 0 10px;display:flex;align-items:center;gap:8px;font-size:17px}
+  .big{font-size:30px;font-weight:800;line-height:1}
+  .metric{display:flex;justify-content:space-between;padding:8px 0;border-top:1px dashed var(--line);font-size:14px}
+  .metric:first-of-type{border-top:none}
+  .metric .v{font-weight:700}
+  .ahead{color:var(--good)} .behind{color:var(--bad)}
+  .winner-badge{position:absolute;top:12px;right:12px;font-size:26px;filter:drop-shadow(0 2px 6px rgba(255,190,60,.5))}
+  .champ{text-align:center;padding:20px;border-radius:16px;background:linear-gradient(135deg,#241b3f,#2a2350);border:1px solid var(--line);margin-bottom:16px}
+  .champ .trophy{font-size:52px}
+  .champ .who{font-size:22px;font-weight:800;margin-top:6px}
+  .champ .lead{color:var(--muted);font-size:13px;margin-top:4px}
+  .muted{color:var(--muted)} .center{text-align:center}
+  .note{font-size:12px;color:var(--muted);margin-top:8px;line-height:1.5}
+  .switcher{display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap}
+  .hidden{display:none!important}
+  canvas{max-width:100%}
+  .ok{color:var(--good)} .err{color:var(--bad)}
+  code{background:var(--card2);padding:2px 6px;border-radius:6px;font-size:12px}
+  a{color:var(--accent)}
+  .tabs{display:flex;gap:8px;margin-bottom:16px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:6px}
+  .tab{flex:1;background:transparent;color:var(--muted);padding:11px;border-radius:10px;font-weight:600;font-size:15px}
+  .tab.active{background:var(--accent);color:#fff}
+  .plan-table{width:100%;border-collapse:collapse;font-size:14px}
+  .plan-table th{text-align:left;color:var(--muted);font-weight:600;font-size:12px;padding:8px 10px;border-bottom:1px solid var(--line)}
+  .plan-table td{padding:9px 10px;border-bottom:1px solid var(--line)}
+  .plan-table tbody tr.now{background:rgba(139,123,255,.14)}
+  .plan-table tbody tr:hover{background:var(--card2)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- CONFIG ERROR SCREEN -->
+  <div id="configScreen" class="card hidden">
+    <h1>⚙️ One-time setup needed</h1>
+    <p class="muted">This app needs your Supabase project details. Open <code>index.html</code>, find the <code>CONFIG</code> block near the top of the script, and paste your project URL + anon key. Full steps are in <code>README.md</code>.</p>
+  </div>
+
+  <!-- IDENTITY SCREEN -->
+  <div id="identityScreen" class="card hidden center">
+    <h1 style="justify-content:center">🏁 Who are you?</h1>
+    <p class="muted">Pick your name so the app knows whose weight to track and remind.</p>
+    <div class="row" style="margin-top:14px">
+      <button onclick="chooseMe('Evelyn')" style="background:var(--evelyn)">💗 I'm Evelyn</button>
+      <button onclick="chooseMe('Damian')" style="background:var(--damian)">💙 I'm Damian</button>
+    </div>
+  </div>
+
+  <!-- SETUP (target weights) SCREEN -->
+  <div id="setupScreen" class="card hidden">
+    <h1>🎯 Set your starting line</h1>
+    <p class="muted">Enter each person's current weight and the target weight to reach by <b>5 Oct 2026</b>. The plan targets losing <b>1.5&nbsp;kg per week</b>.</p>
+    <div class="grid2" style="margin-top:14px">
+      <div>
+        <label>💗 Evelyn — current weight (kg)</label>
+        <input id="ev_start" type="number" step="0.1" placeholder="e.g. 68.0" />
+        <label style="margin-top:10px">💗 Evelyn — target weight (kg)</label>
+        <input id="ev_target" type="number" step="0.1" placeholder="e.g. 60.0" />
+      </div>
+      <div>
+        <label>💙 Damian — current weight (kg)</label>
+        <input id="dm_start" type="number" step="0.1" placeholder="e.g. 85.0" />
+        <label style="margin-top:10px">💙 Damian — target weight (kg)</label>
+        <input id="dm_target" type="number" step="0.1" placeholder="e.g. 77.0" />
+      </div>
+    </div>
+    <div class="row" style="margin-top:8px">
+      <div style="max-width:220px">
+        <label>Start date</label>
+        <input id="start_date" type="date" />
+      </div>
+    </div>
+    <div style="margin-top:14px"><button onclick="saveSetup()">Save &amp; start the race →</button></div>
+    <div id="setupMsg" class="note"></div>
+  </div>
+
+  <!-- MAIN APP -->
+  <div id="app" class="hidden">
+    <h1>🏁 Weight Race <span class="muted" style="font-size:14px;font-weight:400">— to 5 Oct 2026</span></h1>
+    <div class="sub">You are <span id="meLabel" class="pill"></span> · <a href="#" onclick="switchMe();return false">switch</a> · <a href="#" onclick="reEnableNotif();return false">enable notifications</a></div>
+
+    <!-- reminder banner -->
+    <div id="banner" class="banner">
+      <span style="font-size:24px">⏰</span>
+      <div><b>Time to log your weight!</b><br><span class="muted" id="bannerSub">You haven't recorded today yet.</span></div>
+    </div>
+
+    <!-- tabs -->
+    <div class="tabs">
+      <button class="tab active" data-tab="dashboard" onclick="switchTab('dashboard')">🏁 Dashboard</button>
+      <button class="tab" data-tab="plan" onclick="switchTab('plan')">🎯 My Plan</button>
+    </div>
+
+    <div id="tab-dashboard">
+    <!-- champion -->
+    <div id="champ" class="champ">
+      <div class="trophy" id="champTrophy">🏆</div>
+      <div class="who" id="champWho">—</div>
+      <div class="lead" id="champLead"></div>
+    </div>
+
+    <!-- today's entry -->
+    <div class="card">
+      <h3 style="margin-top:0">📝 Today's weigh-in <span class="muted" id="todayDate" style="font-size:13px;font-weight:400"></span></h3>
+      <div class="switcher">
+        <span class="muted">Logging for:</span>
+        <span id="loggingFor" class="pill"></span>
+      </div>
+      <div class="row" style="align-items:end">
+        <div style="max-width:260px">
+          <label>Your weight today (kg)</label>
+          <input id="todayWeight" type="number" step="0.1" placeholder="e.g. 67.4" />
+        </div>
+        <div style="max-width:180px;flex:0"><button onclick="saveToday()">Save weigh-in</button></div>
+      </div>
+      <div id="todayMsg" class="note"></div>
+    </div>
+
+    <!-- person cards -->
+    <div class="grid2" id="cards"></div>
+
+    <!-- chart -->
+    <div class="card">
+      <h3 id="chartTitle" style="margin-top:0">📈 Actuals vs target</h3>
+      <canvas id="chart" height="300"></canvas>
+      <div class="note">Solid = actual weigh-ins · Dashed = target path at 1.5&nbsp;kg/week. A lower actual weight is ahead of target.</div>
+    </div>
+    </div><!-- /tab-dashboard -->
+
+    <!-- plan tab -->
+    <div id="tab-plan" class="hidden">
+      <div class="card">
+        <div class="switcher">
+          <span class="muted">Viewing plan for:</span>
+          <span id="planPersonPills"></span>
+        </div>
+        <div id="planContent"></div>
+      </div>
+    </div>
+
+    <!-- edit targets only -->
+    <div id="editTargetsCard" class="card hidden">
+      <h3 style="margin-top:0">🎯 Edit target weights</h3>
+      <p class="note" style="margin-top:0">Only the 5 Oct targets change — your start weights and start date stay exactly as they are.</p>
+      <div class="grid2">
+        <div><label>💗 Evelyn — new target (kg)</label><input id="et_ev" type="number" step="0.1" /></div>
+        <div><label>💙 Damian — new target (kg)</label><input id="et_dm" type="number" step="0.1" /></div>
+      </div>
+      <div style="margin-top:14px;display:flex;gap:10px">
+        <button onclick="saveTargets()">Save targets</button>
+        <button class="ghost" onclick="$('editTargetsCard').classList.add('hidden')">Cancel</button>
+      </div>
+      <div id="editTargetsMsg" class="note"></div>
+    </div>
+
+    <div class="center note" style="margin-bottom:30px">
+      <a href="#" onclick="openEditTargets();return false">🎯 Edit target weights</a>
+      &nbsp;·&nbsp;
+      <a href="#" onclick="if(confirm('Reset ALL setup — both start AND target weights? Daily entries are kept.')){resetSetup()}return false">Reset all setup</a>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   CONFIG  — paste your Supabase project details here.
+   Get them at: Supabase dashboard -> Project Settings -> API
+   ============================================================ */
+const CONFIG = {
+  SUPABASE_URL: "https://kdrwnmrydzphzxqebvwp.supabase.co",
+  SUPABASE_ANON_KEY: "sb_publishable_k5P8hFYL2WJkKhMtFEScHQ_5a-JWSl_"
+};
+
+/* ---- constants ---- */
+const TARGET_DATE = "2026-10-05";
+const CHART_START_DATE = "2026-07-01";
+const CHART_END_DATE = "2026-12-31";
+const WEEKLY_LOSS = 1.5;            // kg per week (plan)
+const PEOPLE = ["Evelyn", "Damian"];
+const REMIND_HOUR = 6;            // 6am
+const NAG_MS = 10 * 60 * 1000;    // every 10 minutes
+
+/* ---- state ---- */
+let sb = null;
+let me = localStorage.getItem("wr_me") || null;
+let settings = {};   // { Evelyn:{start_weight,target_weight,start_date}, Damian:{...} }
+let entries = [];    // [{person, entry_date, weight}]
+let chart = null;
+let nagTimer = null;
+
+const $ = id => document.getElementById(id);
+const todayStr = () => new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD local
+const fmt = n => (n==null || isNaN(n)) ? "—" : Number(n).toFixed(1);
+
+/* ---- boot ---- */
+function boot(){
+  if(!CONFIG.SUPABASE_URL || CONFIG.SUPABASE_URL.startsWith("YOUR_")){
+    show("configScreen"); return;
+  }
+  sb = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
+  refresh();
+}
+
+async function refresh(){
+  try{
+    const [s,e] = await Promise.all([
+      sb.from('settings').select('*'),
+      sb.from('entries').select('*').order('entry_date',{ascending:true})
+    ]);
+    if(s.error) throw s.error;
+    if(e.error) throw e.error;
+    settings = {}; (s.data||[]).forEach(r=>settings[r.person]=r);
+    entries = e.data || [];
+  }catch(err){
+    alert("Could not reach Supabase. Check your CONFIG values and that the tables + policies exist.\n\n"+err.message);
+    show("configScreen"); return;
+  }
+  route();
+}
+
+function route(){
+  const haveSettings = PEOPLE.every(p => settings[p]);
+  if(!me){ show("identityScreen"); return; }
+  if(!haveSettings){ show("setupScreen"); prefillSetup(); return; }
+  show("app"); renderApp();
+}
+
+function show(id){
+  ["configScreen","identityScreen","setupScreen","app"].forEach(x=>$(x).classList.add("hidden"));
+  $(id).classList.remove("hidden");
+}
+
+/* ---- identity ---- */
+function chooseMe(name){ me = name; localStorage.setItem("wr_me", name); askNotif(); route(); }
+function switchMe(){ localStorage.removeItem("wr_me"); me=null; show("identityScreen"); }
+
+/* ---- setup ---- */
+function prefillSetup(){ if(!$("start_date").value) $("start_date").value = todayStr(); }
+async function saveSetup(){
+  const rows = [
+    {person:"Evelyn", start_weight:parseFloat($("ev_start").value), target_weight:parseFloat($("ev_target").value), start_date:$("start_date").value},
+    {person:"Damian", start_weight:parseFloat($("dm_start").value), target_weight:parseFloat($("dm_target").value), start_date:$("start_date").value},
+  ];
+  for(const r of rows){
+    if(isNaN(r.start_weight)||isNaN(r.target_weight)||!r.start_date){
+      $("setupMsg").innerHTML = '<span class="err">Please fill in all four weights and the start date.</span>'; return;
+    }
+  }
+  $("setupMsg").textContent = "Saving…";
+  const {error} = await sb.from('settings').upsert(rows,{onConflict:'person'});
+  if(error){ $("setupMsg").innerHTML='<span class="err">'+error.message+'</span>'; return; }
+  await refresh();
+}
+async function resetSetup(){
+  await sb.from('settings').delete().in('person',PEOPLE);
+  await refresh();
+}
+function openEditTargets(){
+  $("et_ev").value = settings["Evelyn"] ? settings["Evelyn"].target_weight : "";
+  $("et_dm").value = settings["Damian"] ? settings["Damian"].target_weight : "";
+  $("editTargetsMsg").textContent = "";
+  $("editTargetsCard").classList.remove("hidden");
+  $("editTargetsCard").scrollIntoView({behavior:"smooth", block:"center"});
+}
+async function saveTargets(){
+  const evT = parseFloat($("et_ev").value), dmT = parseFloat($("et_dm").value);
+  if(isNaN(evT) || isNaN(dmT)){ $("editTargetsMsg").innerHTML='<span class="err">Enter both target weights.</span>'; return; }
+  $("editTargetsMsg").textContent = "Saving…";
+  // keep existing start_weight + start_date, only change target_weight
+  const rows = PEOPLE.map(p => ({
+    person: p,
+    start_weight: settings[p].start_weight,
+    start_date: settings[p].start_date,
+    target_weight: p==="Evelyn" ? evT : dmT
+  }));
+  const {error} = await sb.from('settings').upsert(rows, {onConflict:'person'});
+  if(error){ $("editTargetsMsg").innerHTML='<span class="err">'+error.message+'</span>'; return; }
+  $("editTargetsMsg").innerHTML='<span class="ok">Targets updated! 🎯</span>';
+  $("editTargetsCard").classList.add("hidden");
+  await refresh();
+}
+
+/* ---- plan math ---- */
+function weeksBetween(d1,d2){ return (new Date(d2)-new Date(d1))/(7*24*3600*1000); }
+// planned weight for a person on a given date: start - 1kg/week, floored at target
+function planWeight(person,dateStr){
+  const s = settings[person]; if(!s) return null;
+  const w = weeksBetween(s.start_date,dateStr);
+  if(w<0) return s.start_weight;
+  const planned = s.start_weight - WEEKLY_LOSS*w;
+  return Math.max(planned, s.target_weight);
+}
+function latestEntry(person){
+  const rows = entries.filter(e=>e.person===person);
+  return rows.length ? rows[rows.length-1] : null;
+}
+function hasLoggedToday(person){
+  return entries.some(e=>e.person===person && e.entry_date===todayStr());
+}
+// how far AHEAD of plan (positive = ahead / lighter than plan)
+function aheadOfPlan(person){
+  const le = latestEntry(person); if(!le) return null;
+  const plan = planWeight(person, todayStr());
+  return plan - le.weight;
+}
+
+/* ---- today entry ---- */
+async function saveToday(){
+  const w = parseFloat($("todayWeight").value);
+  if(isNaN(w)){ $("todayMsg").innerHTML='<span class="err">Enter a number.</span>'; return; }
+  $("todayMsg").textContent="Saving…";
+  const {error} = await sb.from('entries').upsert(
+    {person:me, entry_date:todayStr(), weight:w},{onConflict:'person,entry_date'});
+  if(error){ $("todayMsg").innerHTML='<span class="err">'+error.message+'</span>'; return; }
+  $("todayMsg").innerHTML='<span class="ok">Saved! 🎉</span>';
+  await refresh();
+}
+
+/* ---- render ---- */
+function renderApp(){
+  $("meLabel").textContent = me;
+  $("meLabel").className = "pill "+me.toLowerCase();
+  $("loggingFor").textContent = me;
+  $("loggingFor").className = "pill "+me.toLowerCase();
+  $("todayDate").textContent = "· "+new Date().toLocaleDateString(undefined,{weekday:'long',month:'short',day:'numeric'});
+  if(hasLoggedToday(me)){
+    const le = latestEntry(me);
+    $("todayWeight").value = le.weight;
+    $("todayMsg").innerHTML = '<span class="ok">Already logged today: '+fmt(le.weight)+' kg. You can update it.</span>';
+  }
+  renderCards();
+  renderChampion();
+  renderChart();
+  if(activeTab==='plan') renderPlan();
+  updateReminder();
+}
+
+function progressBits(person){
+  const s = settings[person];
+  const le = latestEntry(person);
+  const cur = le ? le.weight : s.start_weight;
+  const plan = planWeight(person, todayStr());
+  const ahead = plan - cur;
+  const lostSoFar = s.start_weight - cur;
+  const totalToLose = s.start_weight - s.target_weight;
+  const pct = totalToLose>0 ? Math.max(0,Math.min(100, lostSoFar/totalToLose*100)) : 0;
+  return {s,le,cur,plan,ahead,lostSoFar,totalToLose,pct};
+}
+
+function renderCards(){
+  const winner = championName();
+  const dm = new Date().toLocaleDateString('en-GB',{day:'2-digit',month:'2-digit'}); // DD/MM
+  $("cards").innerHTML = PEOPLE.map(p=>{
+    const b = progressBits(p);
+    const emoji = p==="Evelyn"?"💗":"💙";
+    const aheadCls = b.ahead>=0?"ahead":"behind";
+    const aheadTxt = (b.ahead>=0?"▼ ":"▲ ")+Math.abs(b.ahead).toFixed(1)+" kg "+(b.ahead>=0?"ahead of plan":"behind plan");
+    return `<div class="person-card ${p.toLowerCase()}">
+      ${winner===p?'<div class="winner-badge">👑</div>':''}
+      <h3>${emoji} ${p}</h3>
+      <div class="big">${fmt(b.cur)} <span class="muted" style="font-size:15px">kg</span></div>
+      <div class="${aheadCls}" style="font-weight:700;margin:6px 0 10px">${aheadTxt}</div>
+      <div class="metric"><span class="muted">Start</span><span class="v">${fmt(b.s.start_weight)} kg</span></div>
+      <div class="metric"><span class="muted">Target (5 Oct)</span><span class="v">${fmt(b.s.target_weight)} kg</span></div>
+      <div class="metric"><span class="muted">Plan says for ${dm}</span><span class="v">${fmt(b.plan)} kg</span></div>
+      <div class="metric"><span class="muted">Lost so far</span><span class="v">${b.lostSoFar>=0?'−':'+'}${Math.abs(b.lostSoFar).toFixed(1)} kg</span></div>
+      <div class="metric"><span class="muted">To target</span><span class="v">${b.pct.toFixed(0)}%</span></div>
+      <div class="metric"><span class="muted">Logged today on ${dm}</span><span class="v">${hasLoggedToday(p)?'✅ '+dm:'⏳ not yet'}</span></div>
+    </div>`;
+  }).join("");
+}
+
+// winner = person more ahead of plan; needs both to have at least one entry
+function championName(){
+  const a = aheadOfPlan("Evelyn"), b = aheadOfPlan("Damian");
+  if(a==null && b==null) return null;
+  if(a==null) return "Damian";
+  if(b==null) return "Evelyn";
+  if(Math.abs(a-b)<0.05) return "tie";
+  return a>b ? "Evelyn" : "Damian";
+}
+function renderChampion(){
+  const w = championName();
+  if(!w){ $("champTrophy").textContent="🏁"; $("champWho").textContent="Race not started"; $("champLead").textContent="Log your first weigh-ins to begin."; return; }
+  if(w==="tie"){ $("champTrophy").textContent="🤝"; $("champWho").textContent="Dead heat!"; $("champLead").textContent="You're neck and neck against the plan."; return; }
+  const a = aheadOfPlan("Evelyn"), b = aheadOfPlan("Damian");
+  const lead = Math.abs((a??0)-(b??0));
+  $("champTrophy").textContent = "🏆";
+  $("champWho").innerHTML = (w==="Evelyn"?"💗 ":"💙 ")+w+" is winning!";
+  $("champLead").textContent = lead.toFixed(1)+" kg further ahead of plan than "+(w==="Evelyn"?"Damian":"Evelyn")+".";
+}
+
+function renderChart(){
+  // Keep the chart deliberately simple: the signed-in person's actuals versus their target path.
+  const person = me || "Evelyn";
+  const colour = person === "Evelyn" ? "#ff5d8f" : "#3ea6ff";
+  const labels = [];
+  const start = new Date(CHART_START_DATE);
+  const end = new Date(CHART_END_DATE);
+  const dateKey = d => d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+  for(let d=new Date(start); d<=end; d.setDate(d.getDate()+1)){
+    labels.push(dateKey(d));
+  }
+  const dateIndex = new Map(labels.map((date,index)=>[date,index]));
+  // Use day numbers for x-values rather than a category axis. This guarantees
+  // that the actual line is always drawn chronologically from left to right.
+  const actuals = entries
+    .filter(e=>e.person===person && dateIndex.has(e.entry_date))
+    .map(e=>({x:dateIndex.get(e.entry_date), y:e.weight}))
+    .sort((a,b)=>a.x-b.x);
+  const target = labels.map((date,index)=>({x:index, y:planWeight(person,date)}));
+
+  const data = {labels, datasets:[
+    {
+      label:"Actuals",
+      data:actuals,
+      borderColor:colour, backgroundColor:colour, borderWidth:3, pointRadius:4,
+      tension:.25
+    },
+    {
+      label:"Target",
+      data:target,
+      borderColor:"#aeb8d9", backgroundColor:"#aeb8d9", borderDash:[7,5],
+      borderWidth:2, pointRadius:0, tension:0
+    }
+  ]};
+  const opts = {
+    responsive:true, interaction:{mode:'nearest',intersect:false},
+    scales:{
+      x:{
+        type:'linear', min:0, max:labels.length-1, grid:{color:'#2b3160'},
+        ticks:{
+          color:'#9aa3c7', maxTicksLimit:7,
+          callback:value=>{
+            const date = labels[Math.round(value)];
+            return date ? date.slice(5).replace('-', '/') : '';
+          }
+        }
+      },
+      y:{grid:{color:'#2b3160'}, ticks:{color:'#9aa3c7'}, title:{display:true,text:'kg',color:'#9aa3c7'}}
+    },
+    plugins:{legend:{labels:{color:'#eef1ff',usePointStyle:true}}}
+  };
+  $("chartTitle").textContent = "📈 "+person+" — Actuals vs target";
+  if(chart) chart.destroy();
+  chart = new Chart($("chart"), {type:'line', data, options:opts});
+}
+
+/* ---- tabs & plan view ---- */
+let activeTab = 'dashboard';
+let planPerson = null;
+function switchTab(t){
+  activeTab = t;
+  document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active', b.dataset.tab===t));
+  $("tab-dashboard").classList.toggle('hidden', t!=='dashboard');
+  $("tab-plan").classList.toggle('hidden', t!=='plan');
+  if(t==='plan') renderPlan();
+}
+function fmtDate(ds){ return new Date(ds).toLocaleDateString(undefined,{day:'numeric',month:'short',year:'numeric'}); }
+function planMilestones(person){
+  const s = settings[person]; const rows=[]; let wk=0;
+  let d = new Date(s.start_date); const end = new Date(TARGET_DATE);
+  while(d <= end){
+    const ds = d.toLocaleDateString('en-CA');
+    rows.push({week:wk, date:ds, target:planWeight(person, ds)});
+    d.setDate(d.getDate()+7); wk++;
+  }
+  if(rows[rows.length-1].date !== TARGET_DATE){
+    rows.push({week:wk, date:TARGET_DATE, target:s.target_weight});
+  }
+  return rows;
+}
+function renderPlan(){
+  if(!planPerson) planPerson = me || "Evelyn";
+  $("planPersonPills").innerHTML = PEOPLE.map(p=>{
+    const emoji = p==="Evelyn"?"💗":"💙";
+    const on = p===planPerson;
+    return `<button class="pill ${p.toLowerCase()}" style="${on?'':'opacity:.45;'}margin-right:6px;cursor:pointer;border:none" onclick="planPerson='${p}';renderPlan()">${emoji} ${p}</button>`;
+  }).join("");
+  const s = settings[planPerson];
+  const rows = planMilestones(planPerson);
+  const le = latestEntry(planPerson);
+  const cur = le ? le.weight : s.start_weight;
+  const total = s.start_weight - s.target_weight;
+  const emoji = planPerson==="Evelyn"?"💗":"💙";
+  const today = todayStr();
+  // current milestone = last row whose date <= today
+  let nowIdx = 0; rows.forEach((r,i)=>{ if(r.date<=today) nowIdx=i; });
+  let html = `
+    <h3 style="margin-top:6px">${emoji} ${planPerson}'s plan to 5 Oct 2026</h3>
+    <div class="grid2" style="margin:12px 0">
+      <div class="person-card ${planPerson.toLowerCase()}">
+        <div class="muted" style="font-size:12px;letter-spacing:.5px">START</div>
+        <div class="big" style="margin:4px 0">${fmt(s.start_weight)} <span class="muted" style="font-size:14px">kg</span></div>
+        <div class="muted" style="font-size:13px">${fmtDate(s.start_date)}</div>
+      </div>
+      <div class="person-card ${planPerson.toLowerCase()}">
+        <div class="muted" style="font-size:12px;letter-spacing:.5px">TARGET · END</div>
+        <div class="big" style="margin:4px 0">${fmt(s.target_weight)} <span class="muted" style="font-size:14px">kg</span></div>
+        <div class="muted" style="font-size:13px">by ${fmtDate(TARGET_DATE)} · lose ${fmt(total)} kg total</div>
+      </div>
+    </div>
+    <div class="note" style="margin-bottom:12px">Plan: lose <b>1.5&nbsp;kg per week</b> (from 1 Sep). Each milestone below is ${planPerson}'s target weight for that week. Green ✓ = already reached.</div>
+    <table class="plan-table">
+      <thead><tr><th>Week</th><th>Date</th><th>Target</th><th>Status</th></tr></thead>
+      <tbody>`;
+  rows.forEach((r,i)=>{
+    let status;
+    if(r.week===0) status='<span class="muted">Start</span>';
+    else if(cur <= r.target) status='<span class="ahead">✓ reached</span>';
+    else if(r.date <= today) status='<span class="behind">behind</span>';
+    else status='<span class="muted">upcoming</span>';
+    const label = r.week===0 ? 'Start' : ('Wk '+r.week);
+    html += `<tr class="${i===nowIdx?'now':''}"><td>${label}</td><td>${fmtDate(r.date)}</td><td><b>${fmt(r.target)}</b> kg</td><td>${status}</td></tr>`;
+  });
+  html += `</tbody></table>
+    <div class="note" style="margin-top:10px">Highlighted row = this week. ${le?('Latest logged: <b>'+fmt(cur)+' kg</b>.'):'No weigh-ins logged yet.'}</div>`;
+  $("planContent").innerHTML = html;
+}
+
+/* ---- reminders (in-app, from 6am, nag every 10 min) ---- */
+function askNotif(){ if("Notification" in window && Notification.permission==="default"){ Notification.requestPermission(); } }
+function reEnableNotif(){ if("Notification" in window){ Notification.requestPermission().then(()=>alert("Notifications: "+Notification.permission)); } }
+
+function updateReminder(){
+  const now = new Date();
+  const due = now.getHours()>=REMIND_HOUR && !hasLoggedToday(me);
+  const banner = $("banner");
+  if(due){
+    banner.classList.add("show");
+    $("bannerSub").textContent = "It's past 6am and "+me+" hasn't recorded today. Enter your weight above.";
+    if(!nagTimer){
+      fireNag();
+      nagTimer = setInterval(()=>{ if(hasLoggedToday(me)){ clearNag(); } else { fireNag(); } }, NAG_MS);
+    }
+  }else{
+    banner.classList.remove("show");
+    clearNag();
+  }
+}
+function clearNag(){ if(nagTimer){ clearInterval(nagTimer); nagTimer=null; } $("banner").classList.remove("show"); }
+function fireNag(){
+  document.title = "⏰ Log your weight! — Weight Race";
+  setTimeout(()=>document.title="🏁 Weight Race",4000);
+  if("Notification" in window && Notification.permission==="granted"){
+    new Notification("⏰ Weight Race", {body:me+", time to log today's weight!", tag:"weigh-in"});
+  }
+}
+
+/* re-check reminder every minute; refresh data every 2 min so partners sync */
+setInterval(()=>{ if(me && PEOPLE.every(p=>settings[p])) updateReminder(); }, 60*1000);
+setInterval(()=>{ if(sb && me) refresh(); }, 2*60*1000);
+document.addEventListener('visibilitychange',()=>{ if(!document.hidden && sb && me) refresh(); });
+
+boot();
+</script>
+</body>
+</html>
