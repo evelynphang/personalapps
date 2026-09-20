@@ -1,0 +1,794 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Restaurant Chooser</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Baloo 2', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            line-height: 1.25;
+            background: linear-gradient(135deg, #ff9a76 0%, #ff6a95 50%, #a86bf0 100%);
+            min-height: 100vh;
+            padding: 16px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            color: white;
+            margin-bottom: 18px;
+            padding-top: 12px;
+        }
+
+        h1 {
+            font-size: 2.4em;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .subtitle {
+            opacity: 0.9;
+            font-size: 1em;
+        }
+
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 18px;
+            margin-bottom: 14px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .section-title {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+        }
+
+        .section-title::before {
+            content: '';
+            width: 4px;
+            height: 24px;
+            background: #ff6a95;
+            border-radius: 2px;
+            margin-right: 12px;
+        }
+
+        .form-group {
+            margin-bottom: 10px;
+        }
+
+        label {
+            display: block;
+            font-size: 0.9em;
+            font-weight: 500;
+            color: #555;
+            margin-bottom: 4px;
+        }
+
+        input[type="text"],
+        input[type="number"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+
+        input[type="text"]:focus,
+        input[type="number"]:focus {
+            outline: none;
+            border-color: #ff6a95;
+        }
+
+        .checkbox-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+        }
+
+        input[type="checkbox"] {
+            width: 20px;
+            height: 20px;
+            margin-right: 8px;
+            cursor: pointer;
+            accent-color: #ff6a95;
+        }
+
+        .checkbox-item label {
+            margin-bottom: 0;
+            cursor: pointer;
+            font-weight: 400;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 12px;
+        }
+
+        button {
+            flex: 1;
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-add {
+            background: #ff6a95;
+            color: white;
+        }
+
+        .btn-add:hover {
+            background: #e8497f;
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(255, 106, 149, 0.3);
+        }
+
+        .btn-add:active {
+            transform: translateY(0);
+        }
+
+        .btn-cancel {
+            background: #e0e0e0;
+            color: #555;
+        }
+
+        .btn-cancel:hover {
+            background: #d0d0d0;
+        }
+
+        .btn-edit {
+            background: #a86bf0;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.9em;
+            flex-shrink: 0;
+        }
+
+        .btn-edit:hover {
+            background: #9354e8;
+        }
+
+        .restaurant-actions {
+            display: flex;
+            gap: 8px;
+            margin-left: 12px;
+            flex-shrink: 0;
+        }
+
+        .restaurant-list {
+            margin-top: 12px;
+        }
+
+        .restaurant-item {
+            background: #f8f9fa;
+            border-left: 4px solid #ff6a95;
+            padding: 12px;
+            margin-bottom: 8px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .restaurant-info {
+            flex: 1;
+        }
+
+        .restaurant-name {
+            font-weight: 600;
+            font-size: 1.1em;
+            color: #333;
+            margin-bottom: 3px;
+        }
+
+        .restaurant-budget {
+            font-size: 0.95em;
+            color: #666;
+            margin-bottom: 5px;
+        }
+
+        .restaurant-times {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .meal-badge {
+            display: inline-block;
+            background: #e8f0fe;
+            color: #ff6a95;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 500;
+        }
+
+        .drink-badge {
+            display: inline-block;
+            background: #fff3e0;
+            color: #b8620a;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+            font-weight: 500;
+        }
+
+        .drink-checkbox-group {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+
+        .btn-delete {
+            background: #ff6b6b;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.9em;
+            flex-shrink: 0;
+        }
+
+        .btn-delete:hover {
+            background: #ff5252;
+        }
+
+        .selector-card {
+            background: white;
+            border-radius: 16px;
+            padding: 18px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .selector-group {
+            margin-bottom: 14px;
+        }
+
+        .selector-title {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 1.05em;
+        }
+
+        .meal-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+            gap: 10px;
+        }
+
+        .meal-btn {
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+
+        .meal-btn.active {
+            border-color: #ff6a95;
+            background: #ff6a95;
+            color: white;
+        }
+
+        .meal-btn:hover:not(.active) {
+            border-color: #ff6a95;
+        }
+
+        .budget-input-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+
+        .btn-choose {
+            width: 100%;
+            background: linear-gradient(135deg, #ff6a95 0%, #a86bf0 100%);
+            color: white;
+            padding: 14px;
+            font-size: 1.1em;
+            border-radius: 8px;
+        }
+
+        .btn-choose:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(168, 107, 240, 0.3);
+        }
+
+        .btn-choose:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .result-container {
+            margin-top: 14px;
+            text-align: center;
+        }
+
+        .result-box {
+            background: linear-gradient(135deg, #ff6a95 0%, #a86bf0 100%);
+            color: white;
+            padding: 22px;
+            border-radius: 16px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+
+        .result-label {
+            font-size: 0.9em;
+            opacity: 0.9;
+            margin-bottom: 6px;
+        }
+
+        .result-name {
+            font-size: 2.2em;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .result-budget {
+            font-size: 1.2em;
+            opacity: 0.95;
+        }
+
+        .no-match {
+            text-align: center;
+            color: #666;
+            padding: 18px;
+            font-size: 1.1em;
+        }
+
+        .empty-state {
+            text-align: center;
+            color: #999;
+            padding: 24px 20px;
+        }
+
+        .empty-state-icon {
+            font-size: 2.5em;
+            margin-bottom: 6px;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 1em;
+            transition: all 0.3s;
+        }
+
+        .tab-btn.active {
+            border-color: #ff6a95;
+            background: #ff6a95;
+            color: white;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #ff6a95;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #ff6a95;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 10px auto;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 2em;
+            }
+
+            .checkbox-group {
+                grid-template-columns: 1fr;
+            }
+
+            .button-group {
+                flex-direction: column;
+            }
+
+            .result-name {
+                font-size: 1.8em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Restaurant Chooser</h1>
+            <p class="subtitle">Can't decide where to eat? Let fate choose!</p>
+        </header>
+
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('add')">Add Restaurant</button>
+            <button class="tab-btn" onclick="switchTab('choose')">Choose for Me</button>
+        </div>
+
+        <div id="add-tab" class="card">
+            <div class="section-title">Add a New Restaurant</div>
+
+            <div class="form-group">
+                <label for="name">Restaurant Name</label>
+                <input type="text" id="name" placeholder="e.g., The Daily Brew">
+            </div>
+
+            <div class="form-group">
+                <label for="budget">Budget per Head ($)</label>
+                <input type="number" id="budget" placeholder="e.g., 15" min="0" step="0.5">
+            </div>
+
+            <div class="form-group">
+                <label>Suitable for:</label>
+                <div class="checkbox-group">
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="breakfast" value="breakfast">
+                        <label for="breakfast">Breakfast</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="lunch" value="lunch">
+                        <label for="lunch">Lunch</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="dinner" value="dinner">
+                        <label for="dinner">Dinner</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="dessert" value="dessert">
+                        <label for="dessert">Dessert</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Cheap drinks available:</label>
+                <div class="drink-checkbox-group">
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="cheap-beer">
+                        <label for="cheap-beer">Cheap Beer</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="cheap-wine">
+                        <label for="cheap-wine">Cheap Wine</label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="button-group">
+                <button class="btn-add" id="save-btn" onclick="saveRestaurant()">+ Add Restaurant</button>
+                <button class="btn-cancel" id="cancel-edit-btn" onclick="cancelEdit()" style="display: none;">Cancel</button>
+            </div>
+
+            <div class="restaurant-list" id="restaurant-list"><div class="loading"><div class="spinner"></div>Loading...</div></div>
+        </div>
+
+        <div id="choose-tab" class="selector-card" style="display: none;">
+            <div class="selector-group">
+                <div class="selector-title">What meal are we choosing?</div>
+                <div class="meal-buttons">
+                    <button class="meal-btn" onclick="selectMeal('breakfast')">Breakfast</button>
+                    <button class="meal-btn" onclick="selectMeal('lunch')">Lunch</button>
+                    <button class="meal-btn" onclick="selectMeal('dinner')">Dinner</button>
+                    <button class="meal-btn" onclick="selectMeal('dessert')">Dessert</button>
+                </div>
+            </div>
+
+            <div class="selector-group">
+                <div class="selector-title">Budget Range</div>
+                <div class="budget-input-group">
+                    <div class="form-group">
+                        <label for="min-budget">Min Budget ($)</label>
+                        <input type="number" id="min-budget" value="0" min="0" step="0.5">
+                    </div>
+                    <div class="form-group">
+                        <label for="max-budget">Max Budget ($)</label>
+                        <input type="number" id="max-budget" value="100" min="0" step="0.5">
+                    </div>
+                </div>
+            </div>
+
+            <div class="selector-group">
+                <div class="selector-title">Extras</div>
+                <div class="drink-checkbox-group">
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="include-beer">
+                        <label for="include-beer">Include cheap beer</label>
+                    </div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="include-wine">
+                        <label for="include-wine">Include cheap wine</label>
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn-choose" id="choose-btn" onclick="chooseRestaurant()" disabled>
+                Choose for Me!
+            </button>
+
+            <div class="result-container" id="result-container"></div>
+        </div>
+    </div>
+
+    <script>
+        // Supabase project connection details (public anon key - safe to expose client-side,
+        // access is restricted by the row-level security policies configured on the table).
+        const SUPABASE_URL = "https://ppheguszetoeukmbibcw.supabase.co";
+        const SUPABASE_ANON_KEY = "sb_publishable_15IJFkI8hl0snHKM_fsCFg_xMDuDRpE";
+        const TABLE_URL = SUPABASE_URL + "/rest/v1/restaurants";
+        const SUPABASE_HEADERS = {
+            apikey: SUPABASE_ANON_KEY,
+            Authorization: "Bearer " + SUPABASE_ANON_KEY
+        };
+
+        let selectedMeal = null;
+        let restaurants = [];
+        let editingId = null;
+
+        loadRestaurants();
+
+        function loadRestaurants() {
+            return fetch(TABLE_URL + "?select=*&order=id.asc", { headers: SUPABASE_HEADERS })
+                .then(r => r.json())
+                .then(rows => {
+                    restaurants = (rows || []).map(row => ({
+                        id: row.id,
+                        name: row.name,
+                        budget: parseFloat(row.budget),
+                        meals: row.meals.split(',').map(m => m.trim()),
+                        cheapBeer: !!row.cheap_beer,
+                        cheapWine: !!row.cheap_wine
+                    }));
+                    renderRestaurants();
+                    updateChooseButton();
+                })
+                .catch(err => {
+                    document.getElementById('restaurant-list').innerHTML =
+                        '<div class="empty-state">Could not load restaurants. ' + err + '</div>';
+                });
+        }
+
+        function switchTab(tab) {
+            document.getElementById('add-tab').style.display = tab === 'add' ? 'block' : 'none';
+            document.getElementById('choose-tab').style.display = tab === 'choose' ? 'block' : 'none';
+
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+
+            if (tab === 'add') {
+                loadRestaurants();
+            }
+        }
+
+        function resetForm() {
+            document.getElementById('name').value = '';
+            document.getElementById('budget').value = '';
+            document.getElementById('breakfast').checked = false;
+            document.getElementById('lunch').checked = false;
+            document.getElementById('dinner').checked = false;
+            document.getElementById('dessert').checked = false;
+            document.getElementById('cheap-beer').checked = false;
+            document.getElementById('cheap-wine').checked = false;
+        }
+
+        function editRestaurant(id) {
+            const r = restaurants.find(x => x.id === id);
+            if (!r) return;
+
+            document.getElementById('name').value = r.name;
+            document.getElementById('budget').value = r.budget;
+            document.getElementById('breakfast').checked = r.meals.includes('breakfast');
+            document.getElementById('lunch').checked = r.meals.includes('lunch');
+            document.getElementById('dinner').checked = r.meals.includes('dinner');
+            document.getElementById('dessert').checked = r.meals.includes('dessert');
+            document.getElementById('cheap-beer').checked = r.cheapBeer;
+            document.getElementById('cheap-wine').checked = r.cheapWine;
+
+            editingId = id;
+            document.getElementById('save-btn').textContent = 'Save Changes';
+            document.getElementById('cancel-edit-btn').style.display = 'block';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function cancelEdit() {
+            editingId = null;
+            resetForm();
+            document.getElementById('save-btn').textContent = '+ Add Restaurant';
+            document.getElementById('cancel-edit-btn').style.display = 'none';
+        }
+
+        function saveRestaurant() {
+            const name = document.getElementById('name').value.trim();
+            const budget = parseFloat(document.getElementById('budget').value);
+
+            if (!name || !budget || budget < 0) {
+                alert('Please fill in all fields with valid values');
+                return;
+            }
+
+            const meals = [];
+            if (document.getElementById('breakfast').checked) meals.push('breakfast');
+            if (document.getElementById('lunch').checked) meals.push('lunch');
+            if (document.getElementById('dinner').checked) meals.push('dinner');
+            if (document.getElementById('dessert').checked) meals.push('dessert');
+
+            if (meals.length === 0) {
+                alert('Please select at least one meal time');
+                return;
+            }
+
+            const cheapBeer = document.getElementById('cheap-beer').checked;
+            const cheapWine = document.getElementById('cheap-wine').checked;
+            const payload = { name: name, budget: budget, meals: meals.join(','), cheap_beer: cheapBeer, cheap_wine: cheapWine };
+
+            const isEditing = editingId !== null;
+            const url = isEditing ? (TABLE_URL + "?id=eq." + editingId) : TABLE_URL;
+            const method = isEditing ? 'PATCH' : 'POST';
+
+            fetch(url, {
+                method: method,
+                headers: Object.assign({}, SUPABASE_HEADERS, { 'Content-Type': 'application/json' }),
+                body: JSON.stringify(payload)
+            })
+                .then(r => {
+                    if (!r.ok) throw new Error('Request failed: ' + r.status);
+                    const wasEditing = isEditing;
+                    editingId = null;
+                    resetForm();
+                    document.getElementById('save-btn').textContent = '+ Add Restaurant';
+                    document.getElementById('cancel-edit-btn').style.display = 'none';
+                    return loadRestaurants().then(() => wasEditing);
+                })
+                .then(wasEditing => alert(wasEditing ? 'Restaurant updated successfully!' : 'Restaurant added successfully!'))
+                .catch(error => {
+                    alert('Error saving restaurant: ' + error);
+                });
+        }
+
+        function deleteRestaurant(id) {
+            if (!confirm('Delete this restaurant?')) return;
+
+            fetch(TABLE_URL + "?id=eq." + id, {
+                method: 'DELETE',
+                headers: SUPABASE_HEADERS
+            })
+                .then(r => {
+                    if (!r.ok) throw new Error('Request failed: ' + r.status);
+                    return loadRestaurants();
+                })
+                .catch(error => {
+                    alert('Error deleting restaurant: ' + error);
+                });
+        }
+
+        function renderRestaurants() {
+            const list = document.getElementById('restaurant-list');
+
+            if (restaurants.length === 0) {
+                list.innerHTML = '<div class="empty-state"><div class="empty-state-icon">*</div>No restaurants added yet. Add your first one above!</div>';
+                return;
+            }
+
+            list.innerHTML = restaurants.map(r => `
+                <div class="restaurant-item">
+                    <div class="restaurant-info">
+                        <div class="restaurant-name">${r.name}</div>
+                        <div class="restaurant-budget">$${r.budget.toFixed(2)} per head</div>
+                        <div class="restaurant-times">
+                            ${r.meals.map(meal => `<span class="meal-badge">${meal.charAt(0).toUpperCase() + meal.slice(1)}</span>`).join('')}
+                            ${r.cheapBeer ? '<span class="drink-badge">Cheap Beer</span>' : ''}
+                            ${r.cheapWine ? '<span class="drink-badge">Cheap Wine</span>' : ''}
+                        </div>
+                    </div>
+                    <div class="restaurant-actions">
+                        <button class="btn-edit" onclick="editRestaurant(${r.id})">Edit</button>
+                        <button class="btn-delete" onclick="deleteRestaurant(${r.id})">Delete</button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function selectMeal(meal) {
+            selectedMeal = selectedMeal === meal ? null : meal;
+
+            document.querySelectorAll('.meal-btn').forEach(btn => btn.classList.remove('active'));
+            if (selectedMeal) {
+                event.target.classList.add('active');
+            }
+
+            updateChooseButton();
+        }
+
+        function updateChooseButton() {
+            const btn = document.getElementById('choose-btn');
+            btn.disabled = !selectedMeal || restaurants.length === 0;
+        }
+
+        function chooseRestaurant() {
+            if (!selectedMeal) return;
+
+            const minBudget = parseFloat(document.getElementById('min-budget').value) || 0;
+            const maxBudget = parseFloat(document.getElementById('max-budget').value) || Infinity;
+            const includeBeer = document.getElementById('include-beer').checked;
+            const includeWine = document.getElementById('include-wine').checked;
+
+            const filtered = restaurants.filter(r =>
+                r.meals.includes(selectedMeal) &&
+                r.budget >= minBudget &&
+                r.budget <= maxBudget &&
+                (!includeBeer || r.cheapBeer) &&
+                (!includeWine || r.cheapWine)
+            );
+
+            const resultContainer = document.getElementById('result-container');
+
+            if (filtered.length === 0) {
+                resultContainer.innerHTML = '<div class="no-match">No restaurants match your criteria. Try adjusting your budget or adding more restaurants!</div>';
+                return;
+            }
+
+            const chosen = filtered[Math.floor(Math.random() * filtered.length)];
+
+            resultContainer.innerHTML = `
+                <div class="result-box">
+                    <div class="result-label">Lucky Choice</div>
+                    <div class="result-name">${chosen.name}</div>
+                    <div class="result-budget">$${chosen.budget.toFixed(2)} per head</div>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>
