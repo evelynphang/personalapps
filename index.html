@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Evelyn's Apps</title>
+  <style>
+    :root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px; background: #101424; color: #f6f7fb; }
+    main { width: min(760px, 100%); }
+    h1 { margin: 0 0 8px; font-size: clamp(2rem, 7vw, 4rem); }
+    p { color: #adb5cf; margin: 0 0 28px; }
+    nav { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); }
+    a { color: inherit; text-decoration: none; padding: 22px; border: 1px solid #303956; border-radius: 18px; background: #191f35; transition: transform .15s, border-color .15s; }
+    a:hover, a:focus-visible { transform: translateY(-2px); border-color: #7f8cff; outline: none; }
+    strong { display: block; font-size: 1.15rem; margin-bottom: 6px; }
+    span { color: #adb5cf; font-size: .92rem; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Evelyn's Apps</h1>
+    <p>Choose an app to open.</p>
+    <nav aria-label="Apps">
+      <a href="./restaurant-chooser/"><strong>Restaurant Chooser</strong><span>Find and choose somewhere to eat</span></a>
+      <a href="./weight-race/"><strong>Weight Race</strong><span>Track the challenge and progress</span></a>
+      <a href="./travel-map/"><strong>Travel Map</strong><span>Save and explore travel memories</span></a>
+    </nav>
+  </main>
+</body>
+</html>
